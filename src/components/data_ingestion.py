@@ -5,7 +5,7 @@ from src.logger import logging
 
 '''main data ingestion packages '''
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 
 '''packages from other components'''
 from src.components.data_transformation import DataTransformation
@@ -32,8 +32,10 @@ class DataIngestion:
     def initiate_data_ingestion(self):
         logging.info('Entered the data ingestion method or component')
         try:
-            df=pd.read_csv(os.path.join('notebooks/data','StudentsPerformance.csv'))
+            df=pd.read_csv(os.path.join('notebooks/data','wildshard.csv'))
             logging.info('Read the dataset as dataframe')
+            
+            df['block_id'] = df['activity'].ne(df['activity'].shift()).cumsum()
             
             '''Now we will create the directory to store the data if it does not exist'''
             os.makedirs(os.path.dirname(self.ingestion_config.train_data_path),exist_ok=True)
@@ -41,9 +43,17 @@ class DataIngestion:
             df.to_csv(self.ingestion_config.raw_data_path,index=False,header=True)
             logging.info('train test split initiated')
             
-            train_set,test_set=train_test_split(df,test_size=0.2,random_state=42)
-            train_set.to_csv(self.ingestion_config.train_data_path,index=False,header=True)
-            test_set.to_csv(self.ingestion_config.test_data_path,index=False,header=True)
+            gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+            train_idx, test_idx = next(gss.split(df, groups=df["block_id"]))
+
+            train_set = df.iloc[train_idx]
+            test_set = df.iloc[test_idx]
+            
+            train_set.to_csv(self.ingestion_config.train_data_path, index=False)
+            test_set.to_csv(self.ingestion_config.test_data_path, index=False)
+            
+            # Verify no contiguous activity run appears in both sets.
+            assert set(train_set["block_id"]).isdisjoint(set(test_set["block_id"]))
             
             logging.info('Ingestion of the data is completed')
             
@@ -59,8 +69,12 @@ if __name__=="__main__":
     train_data,test_data=obj.initiate_data_ingestion()
     
     data_transformation=DataTransformation()
-    train_arr,test_arr,_=data_transformation.initiate_data_transformation(train_data,test_data)
-    
-    model_trainer=ModelTrainer()
-    print('Best model score is : {}'.format(model_trainer.initiate_model_trainer(train_arr,test_arr)))
+    train_arr, test_arr, _, groups_train = (
+    data_transformation.initiate_data_transformation(train_data, test_data))
+
+    model_report, timing_report = ModelTrainer().initiate_model_trainer(
+        train_arr, test_arr, groups_train
+    )
+    print(model_report)
+    print(timing_report)
     

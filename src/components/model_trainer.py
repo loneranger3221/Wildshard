@@ -7,11 +7,16 @@ from src.utils import save_object, evaluate_models
 
 '''Main packages for model training '''
 
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.ensemble import (RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor)
-
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+)
+from sklearn.neural_network import MLPClassifier
+from xgboost import XGBClassifier
 
 @dataclass
 class ModelTrainerConfig:
@@ -21,64 +26,71 @@ class ModelTrainer:
     def __init__(self):
         self.model_trainer_config = ModelTrainerConfig()
         
-    def initiate_model_trainer(self, train_array, test_array):
+    def initiate_model_trainer(self, train_array, test_array, groups_train):
         try:
-            logging.info('Splitting training and test input data')
-            X_train, y_train, X_test, y_test = (
-                train_array[:,:-1],
-                train_array[:,-1],
-                test_array[:,:-1],
-                test_array[:,-1]
-            )
-            
+            X_train = train_array[:, :-1]
+            y_train = train_array[:, -1].astype(int)
+            X_test = test_array[:, :-1]
+            y_test = test_array[:, -1].astype(int)
+
             models = {
-                'Linear Regression': LinearRegression(),
-                'KNN Regressor': KNeighborsRegressor(),
-                'Decision Tree Regressor': DecisionTreeRegressor(),
-                'Random Forest Regressor': RandomForestRegressor(),
-                'AdaBoost Regressor': AdaBoostRegressor(),
-                'Gradient Boosting Regressor': GradientBoostingRegressor()
+                "Logistic Regression": LogisticRegression(max_iter=1000),
+                "KNN Classifier": KNeighborsClassifier(),
+                "Decision Tree Classifier": DecisionTreeClassifier(random_state=42),
+                "Random Forest Classifier": RandomForestClassifier(random_state=42),
+                "AdaBoost Classifier": AdaBoostClassifier(random_state=42),
+                "Gradient Boosting Classifier": GradientBoostingClassifier(random_state=42),
+                "XGBoost Classifier": XGBClassifier(
+                    eval_metric="mlogloss", random_state=42
+                ),
+                "MLP Classifier": MLPClassifier(max_iter=500, random_state=42),}
+
+            params = {
+                "Logistic Regression": {"C": [0.1, 1.0, 10.0]},
+                "KNN Classifier": {"n_neighbors": [5, 7, 9, 11]},
+                "Decision Tree Classifier": {"criterion": ["gini", "entropy"]},
+                "Random Forest Classifier": {"n_estimators": [50, 100, 200]},
+                "AdaBoost Classifier": {},
+                "Gradient Boosting Classifier": {
+                    "learning_rate": [0.1, 0.05, 0.01],
+                    "n_estimators": [50, 100, 200],
+                },
+                "XGBoost Classifier": {
+                    "learning_rate": [0.1, 0.05],
+                    "n_estimators": [100, 200],
+                },
+                "MLP Classifier": {
+                    "hidden_layer_sizes": [(64,), (64, 32)],
+                    "alpha": [0.0001, 0.001],
+                },
             }
-            '''Hyperparameters tuning for models'''
-            
-            params= {
-                'Decision Tree Regressor': {
-                    'criterion':['squared_error', 'friedman_mse', 'absolute_error', 'poisson']
-                },
-                'Random Forest Regressor': {
-                    'n_estimators': [8,16,32,64,128,256]
-                },
-                'Gradient Boosting Regressor': {
-                    'learning_rate':[.1,.01,.05,.001],
-                    'subsample':[0.6,0.7,0.75,0.8,0.85,0.9],
-                    'n_estimators': [8,16,32,64,128,256]
-                },
-                'Linear Regression': {},
-                'KNN Regressor': {
-                    'n_neighbors': [5,7,9,11],
-                    },
-                'AdaBoost Regressor':{}
-            }
-            
-            
-            model_report, fitted_models = evaluate_models(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test, models=models, params=params)
-            
-            best_model_score = max(model_report.values())
-            best_model_name = [k for k, v in model_report.items() if v == best_model_score][0]
-            
+
+            model_report, fitted_models, timing_report, cv_scores = evaluate_models(
+                X_train=X_train,
+                y_train=y_train,
+                X_test=X_test,
+                y_test=y_test,
+                groups_train=groups_train,
+                models=models,
+                params=params,
+            )
+
+            # Choose using grouped cross-validation, not the held-out test scores.
+            best_model_name = max(cv_scores, key=cv_scores.get)
             best_model = fitted_models[best_model_name]
-            
-            if best_model_score < 0.6:
-                raise CustomException('No best model found with R2 score greater than 0.6', sys)
-            
-            logging.info(f'Best model found on both training and testing dataset: {best_model_name} with R2 score: {best_model_score}')
-            
+
             save_object(
                 file_path=self.model_trainer_config.trained_model_file_path,
-                obj=best_model
+                obj=best_model,
             )
-            return best_model_score
-            
+
+            logging.info(
+                "Best model by grouped CV macro-F1: %s (%.4f)",
+                best_model_name,
+                cv_scores[best_model_name],
+            )
+            return model_report, timing_report
+
         except Exception as e:
-            logging.info('Exception occurred during model training')
-            raise CustomException(e, sys)
+            logging.exception("Exception occurred during model training")
+            raise CustomException(e, sys) from e

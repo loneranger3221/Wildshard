@@ -18,7 +18,7 @@ setup(
     version='0.1',
     author='Sayak',
     suthor_email='sayak.legend12@gmail.com',
-    description='A machine learning application for predicting outcomes based on input data.',
+    description='Wildshard Dataset Research Paper',
     packages=find_packages(),
     install_requires=get_requirements('requirements.txt')
 )
