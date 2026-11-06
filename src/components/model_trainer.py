@@ -46,22 +46,23 @@ class ModelTrainer:
                 "MLP Classifier": MLPClassifier(max_iter=500, random_state=42),}
 
             params = {
-                "Logistic Regression": {"C": [0.1, 1.0, 10.0]},
-                "KNN Classifier": {"n_neighbors": [5, 7, 9, 11]},
+                "Logistic Regression": {"C": [0.1, 1.0]},
+                "KNN Classifier": {"n_neighbors": [5, 9]},
                 "Decision Tree Classifier": {"criterion": ["gini", "entropy"]},
-                "Random Forest Classifier": {"n_estimators": [50, 100, 200]},
+                "Random Forest Classifier": {"max_depth": [20]},
                 "AdaBoost Classifier": {},
                 "Gradient Boosting Classifier": {
-                    "learning_rate": [0.1, 0.05, 0.01],
-                    "n_estimators": [50, 100, 200],
+                    "learning_rate": [0.1],
+                    "n_estimators": [50],
                 },
                 "XGBoost Classifier": {
-                    "learning_rate": [0.1, 0.05],
-                    "n_estimators": [100, 200],
+                    "learning_rate": [0.1],
+                    "n_estimators": [50],
+                    "max_depth": [6],
                 },
                 "MLP Classifier": {
-                    "hidden_layer_sizes": [(64,), (64, 32)],
-                    "alpha": [0.0001, 0.001],
+                    "hidden_layer_sizes": [(64,)],
+                    "alpha": [0.0001],
                 },
             }
 

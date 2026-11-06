@@ -7,11 +7,6 @@ from src.logger import logging
 import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
 
-'''packages from other components'''
-from src.components.data_transformation import DataTransformation
-from src.components.data_transformation import DataTransformationConfig
-from src.components.model_trainer import ModelTrainerConfig
-from src.components.model_trainer import ModelTrainer
 
 '''dataclasses is a decorator that automatically generates special methods like __init__() and __repr__() for classes, making it easier to create classes that primarily store data.'''
 from dataclasses import dataclass
@@ -63,18 +58,4 @@ class DataIngestion:
             )
         except Exception as e:
             raise CustomException(e,sys)
-
-if __name__=="__main__":
-    obj=DataIngestion()
-    train_data,test_data=obj.initiate_data_ingestion()
-    
-    data_transformation=DataTransformation()
-    train_arr, test_arr, _, groups_train = (
-    data_transformation.initiate_data_transformation(train_data, test_data))
-
-    model_report, timing_report = ModelTrainer().initiate_model_trainer(
-        train_arr, test_arr, groups_train
-    )
-    print(model_report)
-    print(timing_report)
     
