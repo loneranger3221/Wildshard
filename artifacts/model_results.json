@@ -500,7 +500,7 @@
     "Decision Tree Classifier": 0.49025263776088296,
     "Random Forest Classifier": 0.5487298888121113,
     "AdaBoost Classifier": 0.4632745613410654,
-    "Gradient Boosting Classifier": NaN,
+    "Gradient Boosting Classifier": 0.54872988881211123,
     "XGBoost Classifier": 0.5967325168142928,
     "MLP Classifier": 0.5106352476699956
   }
